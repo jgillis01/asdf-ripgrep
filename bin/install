@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+install_ripgrep() {
+  local install_type=$1
+  local version=$2
+  local install_path=$3
+  local concurrency=$3
+
+  if [ "${install_type}" != "version" ]; then
+    echo "Cannot install specific ref from source, sorry." >&2
+    echo "For a list of available versions, see \`asdf list-all ripgrep\`." >&2
+    exit 1
+  fi
+
+  local tmp_dir=$(mktemp -d -t ripgrep_XXXXXX)
+  local archive_path="${tmp_dir}/ripgrep.tar.gz"
+
+  local cmd="curl -o ${archive_path} -L"
+  if [ -n "$GITHUB_API_TOKEN" ]; then
+    cmd="$cmd --header 'Authorization: token $GITHUB_API_TOKEN'"
+  fi
+
+  case $OSTYPE in
+  darwin*)
+    cmd="${cmd} https://github.com/BurntSushi/ripgrep/releases/download/${version}/ripgrep-${version}-x86_64-apple-darwin.tar.gz"
+    ;;
+  linux*)
+    cmd="${cmd} https://github.com/BurntSushi/ripgrep/releases/download/${version}/ripgrep-${version}-i686-unknown-linux-musl.tar.gz"
+    ;;
+  *)
+    echo "unsupported platform" >&2
+    exit 1
+    ;;
+  esac
+
+  eval $cmd
+
+  mkdir -p "${install_path}/bin"
+  tar xzf ${archive_path} --strip-component=1 -C ${install_path}/bin || exit 1
+  chmod +x ${install_path}/bin/rg
+}
+
+install_ripgrep "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
